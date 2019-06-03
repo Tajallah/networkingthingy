@@ -1,10 +1,10 @@
 //A server for chatting and file sharing between various friends. Does not require cloud computing or a large company to run.
 /*
 //STARTED - 5/23/19
-//LAST TOUCHED - 5/23/19
+//LAST TOUCHED - 6/3/19
 FEATURE LIST
 5/23/19 >> Send and receive messages in json format through tcp ports
-TODO >> Save messages in a database
+(STARTED) >> Save messages in a database
 TODO >> Secure and sign messages and user accounts using RSA
 TODO >> Multimedia embedding into a message
 TODO >> Files saved to the server are kept in a persistent repository
@@ -21,20 +21,11 @@ import (
 	"io"
 	"encoding/json"
 	"net"
+	"msg"
 )
 
 const PORT = ":4591" //the port at which connections can be made to the server
 
-
-//a post is a json object containing various properties
-type message struct {
-	Author int `json:"author"`
-	Text string `json:"text"`
-}
-
-func (m message) String() string {
-	return fmt.Sprintf("%s :: %s", m.Author, m.Text)
-}
 
 //Generalized error checker, panics
 func checkErr (e error) {
@@ -42,17 +33,7 @@ func checkErr (e error) {
 		panic(e)
 	}
 }
-/*
-//marshals a message object
-func mkMsg () {
 
-}
-
-//unmarshals a msg object
-func rdMsg () {
-
-}
-*/
 func handleConn(conn net.Conn) ([]byte, error){
 	//defer conn.Close()
 	fmt.Println("Got a connection!")
@@ -77,10 +58,10 @@ func handleConn(conn net.Conn) ([]byte, error){
 }
 
 func displayMsg(input []byte) {
-	var msg message
-	err := json.Unmarshal(input, &msg);
+	var m msg.Message
+	err := json.Unmarshal(input, &m);
 	checkErr(err)
-	fmt.Println(msg)
+	fmt.Println(m)
 }
 
 func main () {
