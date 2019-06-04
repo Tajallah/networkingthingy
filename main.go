@@ -21,7 +21,7 @@ import (
 	"io"
 	"encoding/json"
 	"net"
-	"msg"
+	"./msg"
 )
 
 const PORT = ":4591" //the port at which connections can be made to the server
