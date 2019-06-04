@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"net"
 	"./msg"
+	"./db"
+	"strconv"
 )
 
 const PORT = ":4591" //the port at which connections can be made to the server
@@ -32,6 +34,32 @@ func checkErr (e error) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+func runTests() {
+	//test messages
+	tstmsg := msg.Message{Author: 0, Text: "This is a test"}
+	fmt.Println(tstmsg)
+	fmt.Println(tstmsg.ToJson())
+	jsn, err := tstmsg.ToJson()
+	checkErr(err)
+	fmt.Println(string(jsn))
+	newmsg := msg.Message{Author: 1, Text: "Ree"}
+	jsn, err = newmsg.ToJson()
+	checkErr(err)
+	fmt.Println(tstmsg.FromJson(jsn))
+
+	//test database
+	err = db.AddMsg(tstmsg)
+	checkErr(err)
+	for i:=0; i<19; i++ {
+		tstmsg := msg.Message{Author:2 , Text: "This is message " + strconv.Itoa(i)}
+		err = db.AddMsg(tstmsg)
+		checkErr(err)
+	}
+	var holder []msg.Message
+	db.Last20(&holder)
+	fmt.Println(holder)
 }
 
 func handleConn(conn net.Conn) ([]byte, error){
@@ -65,6 +93,7 @@ func displayMsg(input []byte) {
 }
 
 func main () {
+	runTests()
 	fmt.Println("Starting server")
 	ln, err := net.Listen("tcp", PORT)
 	checkErr(err)

@@ -2,6 +2,7 @@ package msg
 
 import (
 	"fmt"
+	"strconv"
 	"encoding/json"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -14,7 +15,7 @@ type Message struct {
 }
 
 func (m Message) String() string {
-	return fmt.Sprintf("%s :: %s", m.Author, m.Text)
+	return fmt.Sprintf("%s :: %s", strconv.Itoa(m.Author), m.Text)
 }
 
 func (m Message) ToJson() ([]byte, error){

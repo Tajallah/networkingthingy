@@ -17,16 +17,19 @@ func AddMsg (m msg.Message) error {
 	}
 	defer db.Close()
 	db.AutoMigrate(&msg.Message{})
-	db.Create(&msg.Messgae{Author: m.Author, Text: m.Text})
+	db.Create(&msg.Message{Author: m.Author, Text: m.Text})
+	fmt.Println("added ((", m, "))")
 	return nil
 }
 
 //this present the last 20 messages. Will use this to test sending a slice of messages
-func Last20 () (msgs []msg.Message) error {
-	var holder msg.Message
+func Last20 (msgs * []msg.Message) error {
+	fmt.Println("Getting last 20 messages in database")
 	db, err := gorm.Open(DIALECT, DATABASE)
 	if err != nil {
 		return err
 	}
-	//open 20 into slice
+	defer db.Close()
+	db.Limit(20).Find(&msgs)
+	return nil
 }
