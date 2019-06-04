@@ -1,4 +1,4 @@
 #ignore the compiled binary
 main
 repo
-db/messages.db
+messages.db
