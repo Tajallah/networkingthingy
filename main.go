@@ -17,6 +17,7 @@ TODO >> Servers can push updates about activity to members who aren't currently 
 package main
 
 import (
+	"os"
 	"fmt"
 	"io"
 	"encoding/json"
@@ -82,6 +83,9 @@ func handleConn(conn net.Conn) ([]byte, error){
 	}
 	fmt.Println("Bytes writern: ", len(toRet), " Raw Data: \n-----------------------------------------\n", string(toRet))
 	conn.Close()
+	var m msg.Message
+	m.FromJson(toRet)
+	db.AddMsg(m)
 	return toRet, nil
 }
 
@@ -93,7 +97,12 @@ func displayMsg(input []byte) {
 }
 
 func main () {
-	runTests()
+	args := os.Args
+
+	if args[1] == "-t" {
+		runTests()
+	}
+
 	fmt.Println("Starting server")
 	ln, err := net.Listen("tcp", PORT)
 	checkErr(err)
