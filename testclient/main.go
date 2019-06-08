@@ -3,13 +3,14 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"net"
 	"encoding/json"
 	"io"
 )
 
-const IPADDR = "localhost:4591"
+const PORT = "4591"
 
 type message struct {
 	Author int `json:"author"`
@@ -20,6 +21,23 @@ func (m message) String() string {
 	return fmt.Sprintf("%s :: %s", m.Author, m.Text)
 }
 
+func mkIP () string, error{
+	var e error
+	if len(os.Args) > 1 {
+		if os.Args[1] == "-p" {
+			if len(os.Args) > 3 {
+				ip := os.Args[2]
+				return ip + ":" + PORT, nil
+			} else {
+				fmt.Println("Are you stupid? You didn't give an ip address after -p")
+				return nil, 
+			}
+		} else {
+			fmt.Println("invalid argument ", os.Args[1])
+		}
+	}
+	return "localhost:" + PORT
+}
 
 func checkErr (e error) {
 	if e != nil {
@@ -50,9 +68,10 @@ func recieve (conn net.Conn) error {
 }
 
 func main () {
+	ipAddr := mkIP
 	for {
-		fmt.Println("Connecting to ", IPADDR)
-		conn, err := net.Dial("tcp", IPADDR)
+		fmt.Println("Connecting to ", )
+		conn, err := net.Dial("tcp", )
 		checkErr(err)
 		go recieve(conn)
 		msg := &message{Author: 0, Text: "This is a test"}
