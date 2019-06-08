@@ -1,4 +1,5 @@
 #ignore the compiled binary
-main
+server/main
+testclient/main
 repo
-messages.db
+server/messages.db

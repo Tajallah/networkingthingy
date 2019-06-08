@@ -5,6 +5,9 @@
 FEATURE LIST
 5/23/19 >> Send and receive messages in json format through tcp ports
 (STARTED) >> Save messages in a database
+	*save singular messages
+	-serve saved messages on request
+	-when a new message is commited to db it must be autoserved to all clients
 TODO >> Secure and sign messages and user accounts using RSA
 TODO >> Multimedia embedding into a message
 TODO >> Files saved to the server are kept in a persistent repository
@@ -63,8 +66,22 @@ func runTests() {
 	fmt.Println(holder)
 }
 
-func handleConn(conn net.Conn) ([]byte, error){
-	//defer conn.Close()
+//this guy will send all messages from the publish stack to all clients later
+func publish (publishStack chan []byte, clients []net.Conn) error {
+	toWrite := <-publishStack
+	for _, conn := range(clients) {
+		bts, err := conn.Write(toWrite)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("Wrote ", bts,"to connection at ", conn)
+		}
+	}
+	return nil
+}
+
+func handleConn(conn net.Conn, publishStack chan []byte) error {
+	defer conn.Close()
 	fmt.Println("Got a connection!")
 	buffer := make([]byte, 8)
 	toRet := make([]byte, 0, 256)
@@ -74,19 +91,20 @@ func handleConn(conn net.Conn) ([]byte, error){
 			if err == io.EOF {
 				break
 			} else {
-				return nil, err
+				return err
 			}
 		} else {
 			fmt.Println("bytes written from buffer: ", bts)
 			toRet = append(toRet, buffer[:bts]...)
 		}
 	}
-	fmt.Println("Bytes writern: ", len(toRet), " Raw Data: \n-----------------------------------------\n", string(toRet))
-	conn.Close()
+	//fmt.Println("Bytes writern: ", len(toRet), " Raw Data: \n-----------------------------------------\n", string(toRet))
+	//conn.Close()
+	publishStack <- toRet
 	var m msg.Message
 	m.FromJson(toRet)
 	db.AddMsg(m)
-	return toRet, nil
+	return nil
 }
 
 func displayMsg(input []byte) {
@@ -99,9 +117,14 @@ func displayMsg(input []byte) {
 func main () {
 	args := os.Args
 
-	if args[1] == "-t" {
-		runTests()
+	if len(args) > 1 {
+		if args[1] == "-t" {
+			runTests()
+		}
 	}
+
+	var clients []net.Conn
+	publishStack := make(chan []byte)
 
 	fmt.Println("Starting server")
 	ln, err := net.Listen("tcp", PORT)
@@ -110,6 +133,10 @@ func main () {
 	for {
 		conn, err := ln.Accept()
 		checkErr(err)
-		go handleConn(conn)
+		clients = append(clients, conn)
+		for _, cli := range(clients) {
+			go handleConn(cli, publishStack)
+		}
+		go publish(publishStack, clients)
 	}
 }
