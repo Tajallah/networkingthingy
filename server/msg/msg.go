@@ -12,6 +12,9 @@ type Message struct {
 	gorm.Model
 	Author int `json:author`
 	Text string `string`
+	Channel string `string`
+	Media string `string`
+	signature []byte
 }
 
 func (m Message) String() string {
