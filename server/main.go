@@ -1,11 +1,21 @@
 //A server for chatting and file sharing between various friends. Does not require cloud computing or a large company to run.
 /*
+<<<<<<< HEAD
 //STARTED - 5/23/19
 //LAST TOUCHED - I'm touching this thing alot and not keeping up with it anymore. i don't need this line if I have github keeping track...
 FEATURE LIST
 5/23/19 >> Send and receive messages in json format through tcp ports
 (STARTED) >> Save messages in a database
 	*save singular messages (How *do* I want to hanlde messages really?)
+=======
+//STARTED - 5/23/1159
+//LAST TOUCHED - 7/119
+FEATURE LIST
+5/23/19 >> Send and receive messages in json format through tcp ports
+(STARTED) >> Save messages in a database
+	*save singular messages
+	-Let's keep this light. No Database is actually needed. We'll justy store the posts as loose json files 
+>>>>>>> 49bdf4c606c98dd0d7d5e56de80be834c3b11839
 	-serve saved messages on request
 	-when a new message is commited to db it must be autoserved to all clients
 TODO >> Secure and sign messages and user accounts using RSA
@@ -52,7 +62,6 @@ func runTests() {
 	jsn, err = newmsg.ToJson()
 	checkErr(err)
 	fmt.Println(tstmsg.FromJson(jsn))
-
 	//test database
 	err = db.AddMsg(tstmsg)
 	checkErr(err)
