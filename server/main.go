@@ -1,151 +1,173 @@
-//A server for chatting and file sharing between various friends. Does not require cloud computing or a large company to run.
-/*
-<<<<<<< HEAD
-//STARTED - 5/23/19
-//LAST TOUCHED - I'm touching this thing alot and not keeping up with it anymore. i don't need this line if I have github keeping track...
-FEATURE LIST
-5/23/19 >> Send and receive messages in json format through tcp ports
-(STARTED) >> Save messages in a database
-	*save singular messages (How *do* I want to hanlde messages really?)
-=======
-//STARTED - 5/23/1159
-//LAST TOUCHED - 7/119
-FEATURE LIST
-5/23/19 >> Send and receive messages in json format through tcp ports
-(STARTED) >> Save messages in a database
-	*save singular messages
-	-Let's keep this light. No Database is actually needed. We'll justy store the posts as loose json files 
->>>>>>> 49bdf4c606c98dd0d7d5e56de80be834c3b11839
-	-serve saved messages on request
-	-when a new message is commited to db it must be autoserved to all clients
-TODO >> Secure and sign messages and user accounts using RSA
-TODO >> Multimedia embedding into a message
-TODO >> Files saved to the server are kept in a persistent repository
-TODO >> Servers can be private and require users to be invited
-TODO >> Users can have various permissions and roles
-TODO >> Servers can push updates about activity to members who aren't currently connected
---------At this point start working on the front end-------------------------------------
-*/
-
 package main
 
 import (
-	"os"
-	"fmt"
 	"io"
-	"encoding/json"
+	"fmt"
 	"net"
-	"./msg"
-	"./db"
-	"strconv"
+	"time"
+	"bufio"
+	//"encoding/json"
 )
 
-const PORT = ":4591" //the port at which connections can be made to the server
+//CONSTANTS
+const PORT = "localhost:4591"
 
+//Global Variables
+var (
+	awaitedConns = make(chan net.Conn)
+	connections = make(map[string]bool) // This is a list of the network addresses of clients and whether or not they're live
+	publishStack = make(chan []byte)
+	cleanerSwitch = true
+)
 
-//Generalized error checker, panics
+//generalized error checker
 func checkErr (e error) {
 	if e != nil {
-		panic(e)
+		fmt.Println(e) //for now we'll just print the error
 	}
 }
 
-func runTests() {
-	//test messages
-	tstmsg := msg.Message{Author: 0, Text: "This is a test"}
-	fmt.Println(tstmsg)
-	fmt.Println(tstmsg.ToJson())
-	jsn, err := tstmsg.ToJson()
-	checkErr(err)
-	fmt.Println(string(jsn))
-	newmsg := msg.Message{Author: 1, Text: "Ree"}
-	jsn, err = newmsg.ToJson()
-	checkErr(err)
-	fmt.Println(tstmsg.FromJson(jsn))
-	//test database
-	err = db.AddMsg(tstmsg)
-	checkErr(err)
-	for i:=0; i<19; i++ {
-		tstmsg := msg.Message{Author:2 , Text: "This is message " + strconv.Itoa(i)}
-		err = db.AddMsg(tstmsg)
-		checkErr(err)
-	}
-	var holder []msg.Message
-	db.Last20(&holder)
-	fmt.Println(holder)
-}
-
-//this guy will send all messages from the publish stack to all clients later
-func publish (publishStack chan []byte, clients []net.Conn) error {
-	toWrite := <-publishStack
-	for _, conn := range(clients) {
-		bts, err := conn.Write(toWrite)
-		if err != nil {
-			return err
-		} else {
-			fmt.Println("Wrote ", bts,"to connection at ", conn)
+//this exists so that we can check if a connection is in our list of connections
+/*func connIter (c net.Conn) bool {
+	fmt.Println("---CONN ITER---")
+	for conn, _ := range (connections) {
+		if conn == c {
+			return true
 		}
 	}
+	return false
+}*/
+
+/*func connRemove (c net.Conn) string {
+	fmt.Println("---REMOVING---")
+	for i, conn := range(connections) {
+		if c == conn {
+			connections = append(connections[:i], connections[i+1:]...)
+			return "---CONNECTION TO " + c.RemoteAddr().String() + " LOST---"
+		}
+	}
+	return "---TRIED TO REMOVE " + c.RemoteAddr().String() + " BUT IT CANNOT BE FOUND IN connections---"
+}*/
+
+//sends out a message on the publish stack to every open connection
+func broadcast (msg []byte) {
+	fmt.Println("---BROADCASTING---")
+	for conn, active := range (connections) {
+		if active == true{
+			c, err := net.Dial("tcp", conn)
+			defer c.Close()
+			checkErr(err)
+			if err != nil {
+				c.Write(msg)
+				fmt.Println("---SENT ", string(msg), " to ", conn, "---")
+			} else {
+				connections[conn] = false
+			}
+		}
+	}
+}
+
+//Check to make sure that clients are still alive
+func touch () {
+	fmt.Println("---TOUCHING---")
+	for conn, active := range(connections) {
+		if active == true {
+			c, err := net.Dial("tcp", conn)
+			checkErr(err)
+			if err != nil {
+				c.Write([]byte("🆗"))
+			} else {
+				connections[conn] = false
+			}
+		}
+	}
+}
+
+//clean false connections
+func cleaner () error{
+	if cleanerSwitch != false {
+		return nil
+	}
+	for conn, active := range(connections) {
+		if active == false {
+			delete(connections, conn)
+		}
+	}
+	cleanerSwitch = false
 	return nil
 }
 
-func handleConn(conn net.Conn, publishStack chan []byte) error {
-	defer conn.Close()
-	fmt.Println("Got a connection!")
-	buffer := make([]byte, 8)
-	toRet := make([]byte, 0, 256)
+func cleanerTimer() {
+	timing := 3 * time.Second
 	for {
-		bts, err := conn.Read(buffer)
+		cleanerSwitch = true
+		time.Sleep(timing)
+	}
+}
+
+//Handling an incoming connection
+func handleConn (conn net.Conn) ([]byte, error) {
+	fmt.Println("---HANDLING CONNECTION---")
+	addr := conn.RemoteAddr().String()
+	fmt.Println("---GOT A CONNECTION FROM ", addr, "---")
+	defer conn.Close()
+	buffer := make([]byte, 256)
+	fnl := make([]byte, 16)
+	rdr := bufio.NewReader(conn)
+	for {
+		bytesnum, err := rdr.Read(buffer)
 		if err != nil {
 			if err == io.EOF {
 				break
 			} else {
-				return err
+				fmt.Println(err)
+				return nil, err
 			}
+		} else if bytesnum != 0{
+			fmt.Println("--recieved ", bytesnum, " bytes --")
+			fnl = append(fnl, buffer...)
 		} else {
-			fmt.Println("bytes written from buffer: ", bts)
-			toRet = append(toRet, buffer[:bts]...)
+			break
 		}
 	}
-	//fmt.Println("Bytes writern: ", len(toRet), " Raw Data: \n-----------------------------------------\n", string(toRet))
-	//conn.Close()
-	publishStack <- toRet
-	var m msg.Message
-	m.FromJson(toRet)
-	db.AddMsg(m)
-	return nil
+	fmt.Println(string(fnl))
+	publishStack <- fnl
+	fmt.Println(fnl)
+	connections[addr] = true
+	return fnl, nil
 }
 
-func displayMsg(input []byte) {
-	var m msg.Message
-	err := json.Unmarshal(input, &m);
-	checkErr(err)
-	fmt.Println(m)
-}
-
-func main () {
-	args := os.Args
-
-	if len(args) > 1 {
-		if args[1] == "-t" {
-			runTests()
-		}
-	}
-
-	var clients []net.Conn
-	publishStack := make(chan []byte)
-
-	fmt.Println("Starting server")
-	ln, err := net.Listen("tcp", PORT)
-	checkErr(err)
-	fmt.Println("Listening on port ", PORT)
+func awaitConns (ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		checkErr(err)
-		clients = append(clients, conn)
-		for _, cli := range(clients) {
-			go handleConn(cli, publishStack)
+		defer conn.Close()
+		deadline := 5 * time.Second
+		conn.SetDeadline(time.Now().Add(deadline))
+		awaitedConns <- conn
+	}
+}
+
+func main () {
+	fmt.Println("---STARTING SERVER---")
+	go cleanerTimer()
+	var msg []byte
+	var conn net.Conn
+	ln, err :=  net.Listen("tcp", PORT)
+	checkErr(err)
+	go awaitConns(ln)
+	for {
+		msg = nil
+		conn = nil
+		select{
+		case conn = <-awaitedConns:
+			handleConn(conn)
+		case msg = <-publishStack:
+			broadcast(msg)
 		}
-		go publish(publishStack, clients)
+		if len(connections) > 0 {
+			touch()
+			cleaner()
+		}
 	}
 }
