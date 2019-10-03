@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"os"
 	"fmt"
 	"net"
 	"time"
@@ -11,6 +12,9 @@ import (
 
 //CONSTANTS
 const PORT = "localhost:4591"
+const SILOS = "datapile/silos"
+const MEDIA = "datapile/media"
+const LOCKED = "datapile/media/locked"
 
 //Global Variables
 var (
@@ -27,27 +31,19 @@ func checkErr (e error) {
 	}
 }
 
-//this exists so that we can check if a connection is in our list of connections
-/*func connIter (c net.Conn) bool {
-	fmt.Println("---CONN ITER---")
-	for conn, _ := range (connections) {
-		if conn == c {
-			return true
+//Checks if a path and/or file exists and makes it if it doesn't. Only used for critical structure
+func checkCritical (path string) error{
+	fmt.Println("Checking directory ", path)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		err := os.MkdirAll(path, 0666)
+		if err != nil {
+			fmt.Println("criticalCheck of ", path, " failed.")
+			return err
 		}
+		fmt.Println("Check OK!")
+		reutrn nil
 	}
-	return false
-}*/
-
-/*func connRemove (c net.Conn) string {
-	fmt.Println("---REMOVING---")
-	for i, conn := range(connections) {
-		if c == conn {
-			connections = append(connections[:i], connections[i+1:]...)
-			return "---CONNECTION TO " + c.RemoteAddr().String() + " LOST---"
-		}
-	}
-	return "---TRIED TO REMOVE " + c.RemoteAddr().String() + " BUT IT CANNOT BE FOUND IN connections---"
-}*/
+}
 
 //sends out a message on the publish stack to every open connection
 func broadcast (msg []byte) {
@@ -105,6 +101,18 @@ func cleanerTimer() {
 	}
 }
 
+//Ran on each startup. makes sure if critical structure is valid
+func preStartup () {
+	fmt.Println("PRE-STARTUP BEHAVIOR BEGINNING")
+	var paths := [SILOS, MEDIA, LOCKED]
+	for _, str := range(paths) {
+		err := ckeckCritical(str)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 //Handling an incoming connection
 func handleConn (conn net.Conn) ([]byte, error) {
 	fmt.Println("---HANDLING CONNECTION---")
@@ -137,6 +145,7 @@ func handleConn (conn net.Conn) ([]byte, error) {
 	return fnl, nil
 }
 
+//Awaiting connections
 func awaitConns (ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
@@ -148,6 +157,7 @@ func awaitConns (ln net.Listener) {
 	}
 }
 
+//Main loop
 func main () {
 	fmt.Println("---STARTING SERVER---")
 	go cleanerTimer()

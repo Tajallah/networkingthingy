@@ -2,10 +2,8 @@ package users
 
 import (
 	"fmt"
-<<<<<<< HEAD
+	"os"
 	"crypto/rsa"
-)
-=======
 	"encoding/json"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -84,7 +82,7 @@ type PrivaledgePage struct {
 }
 
 func Btoi (b bool) uint8 {
-	
+
 }
 
 func (p * PrivaledgePage) Export () []byte {
@@ -110,6 +108,5 @@ func BundleInfo (PublicKey []byte, Username string, PublicName string, Tags []Ta
 }
 
 func (u User) NewUser (u User) error {
-	
+
 }
->>>>>>> 49bdf4c606c98dd0d7d5e56de80be834c3b11839

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"encoding/json"
-	"io"
 )
 
 const PORT = "4591"
@@ -21,8 +20,8 @@ func (m message) String() string {
 	return fmt.Sprintf("%s :: %s", m.Author, m.Text)
 }
 
-func mkIP () string, error{
-	var e error
+func mkIP () (string, error){
+	//var e error
 	if len(os.Args) > 1 {
 		if os.Args[1] == "-p" {
 			if len(os.Args) > 3 {
@@ -30,13 +29,13 @@ func mkIP () string, error{
 				return ip + ":" + PORT, nil
 			} else {
 				fmt.Println("Are you stupid? You didn't give an ip address after -p")
-				return nil, 
+				return "", nil
 			}
 		} else {
 			fmt.Println("invalid argument ", os.Args[1])
 		}
 	}
-	return "localhost:" + PORT
+	return "localhost:" + PORT, nil
 }
 
 func checkErr (e error) {
@@ -45,7 +44,7 @@ func checkErr (e error) {
 	}
 }
 
-func recieve (conn net.Conn) error {
+/*func recieve (conn net.Conn) error {
 	defer conn.Close()
 	fmt.Println("Got a message!")
 	buffer := make([]byte, 8)
@@ -65,19 +64,20 @@ func recieve (conn net.Conn) error {
 	}
 	fmt.Println(string(toRet))
 	return nil
-}
+}*/
+
 
 func main () {
-	ipAddr := mkIP
-	for {
-		fmt.Println("Connecting to ", )
-		conn, err := net.Dial("tcp", )
-		checkErr(err)
-		go recieve(conn)
-		msg := &message{Author: 0, Text: "This is a test"}
-		byt, err := json.Marshal(msg)
-		checkErr(err)
-		conn.Write(byt)
-		fmt.Println("Sent :^) \n", msg)
-	}
+	ipAddr, err := mkIP()
+	checkErr(err)
+	fmt.Println("Connecting to ", )
+	conn, err := net.Dial("tcp", ipAddr)
+	checkErr(err)
+	//go recieve(conn)
+	msg := &message{Author: 0, Text: "This is a test"}
+	byt, err := json.Marshal(msg)
+	fmt.Println(string(byt))
+	checkErr(err)
+	conn.Write(byt)
+	fmt.Println("Sent :^) \n", msg)
 }
