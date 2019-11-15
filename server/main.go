@@ -41,8 +41,8 @@ func checkCritical (path string) error{
 			return err
 		}
 		fmt.Println("Check OK!")
-		reutrn nil
 	}
+	return nil
 }
 
 //sends out a message on the publish stack to every open connection
@@ -104,9 +104,9 @@ func cleanerTimer() {
 //Ran on each startup. makes sure if critical structure is valid
 func preStartup () {
 	fmt.Println("PRE-STARTUP BEHAVIOR BEGINNING")
-	var paths := [SILOS, MEDIA, LOCKED]
+	var paths = [3]string{SILOS, MEDIA, LOCKED}
 	for _, str := range(paths) {
-		err := ckeckCritical(str)
+		err := checkCritical(str)
 		if err != nil {
 			panic(err)
 		}
